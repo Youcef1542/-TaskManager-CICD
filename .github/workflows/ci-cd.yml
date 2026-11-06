@@ -29,3 +29,32 @@ jobs:
 
       - name: Executer les tests
         run: python -m pytest -q
+
+  docker:
+    needs: tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Recuperer le code
+        uses: actions/checkout@v7
+
+      - name: Construire l'image Docker
+        run: docker build -t taskmanager:ci .
+
+      - name: Demarrer le conteneur
+        run: docker run -d --name taskmanager-ci -p 8080:8000 taskmanager:ci
+
+      - name: Verifier l'application
+        run: |
+          for i in {1..15}; do
+            if curl -fsS http://localhost:8080/health && curl -fsS http://localhost:8080/version; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs taskmanager-ci
+          exit 1
+
+      - name: Arreter le conteneur
+        if: always()
+        run: docker stop taskmanager-ci || true
