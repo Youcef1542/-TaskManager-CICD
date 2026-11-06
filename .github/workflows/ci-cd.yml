@@ -34,7 +34,10 @@ jobs:
     needs: tests
     runs-on: ubuntu-latest
 
-    steps:
+  permissions:
+      contents: read
+      packages: write
+  steps:
       - name: Recuperer le code
         uses: actions/checkout@v7
 
@@ -58,3 +61,18 @@ jobs:
       - name: Arreter le conteneur
         if: always()
         run: docker stop taskmanager-ci || true
+              - name: Connexion a GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Identifier l'image avec le commit
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: docker tag taskmanager:ci ghcr.io/youcef1542/taskmanager-cicd:${{ github.sha }}
+
+      - name: Publier l'image sur GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: docker push ghcr.io/youcef1542/taskmanager-cicd:${{ github.sha }}
